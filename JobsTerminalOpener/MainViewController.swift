@@ -15,10 +15,131 @@ final class MainViewController: NSViewController {
     private let activationRetryLimit = 8
     private let logURL = URL(fileURLWithPath: "/tmp/JobsTerminalOpener.log")
     private let statusLabel = NSTextField(labelWithString: "")
+    private let selectionStatusLabel = NSTextField(labelWithString: "")
     private var activationWorkItem: DispatchWorkItem?
+    private var lastLaidOutViewSize: NSSize?
+    private var lastLaidOutViewportSize: NSSize?
+    private lazy var scrollView: NSScrollView = {
+        let scrollView = NSScrollView(frame: .zero)
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.drawsBackground = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.hasVerticalScroller = true
+        return scrollView
+    }()
+    private lazy var scrollDocumentView = FlippedDocumentView(frame: .zero)
+    private lazy var titleLabel: NSTextField = {
+        let label = NSTextField(labelWithString: "Finder 右键功能")
+        label.font = .systemFont(ofSize: 28, weight: .bold)
+        label.textColor = .labelColor
+        return label
+    }()
+    private lazy var detailLabel: NSTextField = {
+        let label = NSTextField(wrappingLabelWithString: "这里管理 JobsTerminalOpener 内的 5 项功能；另外 3 个独立扩展仍由总安装器选择。勾选后点击“保存功能选择”。")
+        label.font = .systemFont(ofSize: 15)
+        label.textColor = .secondaryLabelColor
+        return label
+    }()
+    private lazy var selectionTitleLabel: NSTextField = {
+        let label = NSTextField(labelWithString: "可选功能")
+        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        label.textColor = .labelColor
+        return label
+    }()
+    private lazy var openFeatureCheckbox = makeFeatureCheckbox(for: .open)
+    private lazy var podInstallFeatureCheckbox = makeFeatureCheckbox(for: .podInstall)
+    private lazy var flutterPubGetFeatureCheckbox = makeFeatureCheckbox(for: .flutterPubGet)
+    private lazy var codeGraphFeatureCheckbox = makeFeatureCheckbox(for: .codeGraphBootstrap)
+    private lazy var gitEmptyCommitPushFeatureCheckbox = makeFeatureCheckbox(for: .gitEmptyCommitPush)
+    private lazy var saveSelectionButton: NSButton = {
+        let button = NSButton(title: "保存功能选择", target: self, action: #selector(saveFeatureSelectionAction))
+        button.bezelStyle = .rounded
+        return button
+    }()
+    private lazy var selectAllButton: NSButton = {
+        let button = NSButton(title: "全部选择", target: self, action: #selector(selectAllFeaturesAction))
+        button.bezelStyle = .rounded
+        return button
+    }()
+    private lazy var deselectAllButton: NSButton = {
+        let button = NSButton(title: "全部取消", target: self, action: #selector(deselectAllFeaturesAction))
+        button.bezelStyle = .rounded
+        return button
+    }()
+    private lazy var openSettingsButton: NSButton = {
+        let button = NSButton(title: "打开扩展设置", target: self, action: #selector(openExtensionSettings))
+        button.bezelStyle = .rounded
+        return button
+    }()
+    private lazy var enableButton: NSButton = {
+        let button = NSButton(title: "重新启用扩展", target: self, action: #selector(enableExtensionAction))
+        button.bezelStyle = .rounded
+        return button
+    }()
+    private lazy var refreshButton: NSButton = {
+        let button = NSButton(title: "刷新状态", target: self, action: #selector(refreshStatusAction))
+        button.bezelStyle = .rounded
+        return button
+    }()
+    private lazy var tipLabel: NSTextField = {
+        let label = NSTextField(wrappingLabelWithString: "保存后关闭当前右键菜单并重新右键即可生效。如果扩展状态异常，再点击“重新启用扩展”。系统设置路径：隐私与安全性 -> 扩展 -> Finder 扩展。")
+        label.font = .systemFont(ofSize: 13)
+        label.textColor = .secondaryLabelColor
+        return label
+    }()
+    private lazy var featureStackView: NSStackView = {
+        let stackView = NSStackView(views: featureCheckboxes.map { $0.checkbox })
+        stackView.orientation = .vertical
+        stackView.alignment = .leading
+        stackView.spacing = 8
+        return stackView
+    }()
+    private lazy var selectionButtonStackView: NSStackView = {
+        let stackView = NSStackView(views: [saveSelectionButton, selectAllButton, deselectAllButton])
+        stackView.orientation = .horizontal
+        stackView.alignment = .centerY
+        stackView.spacing = 12
+        return stackView
+    }()
+    private lazy var extensionButtonStackView: NSStackView = {
+        let stackView = NSStackView(views: [openSettingsButton, enableButton, refreshButton])
+        stackView.orientation = .horizontal
+        stackView.alignment = .centerY
+        stackView.spacing = 12
+        return stackView
+    }()
+    private lazy var rootStackView: NSStackView = {
+        let stackView = NSStackView(views: [
+            titleLabel,
+            detailLabel,
+            selectionTitleLabel,
+            featureStackView,
+            selectionStatusLabel,
+            selectionButtonStackView,
+            statusLabel,
+            extensionButtonStackView,
+            tipLabel
+        ])
+        stackView.orientation = .vertical
+        stackView.alignment = .leading
+        stackView.spacing = 12
+        stackView.setCustomSpacing(18, after: detailLabel)
+        stackView.setCustomSpacing(18, after: selectionButtonStackView)
+        return stackView
+    }()
+    private var featureCheckboxes: [(feature: FinderMenuFeature, checkbox: NSButton)] {
+        [
+            (.open, openFeatureCheckbox),
+            (.podInstall, podInstallFeatureCheckbox),
+            (.flutterPubGet, flutterPubGetFeatureCheckbox),
+            (.codeGraphBootstrap, codeGraphFeatureCheckbox),
+            (.gitEmptyCommitPush, gitEmptyCommitPushFeatureCheckbox)
+        ]
+    }
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 680, height: 430))
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 820, height: 580))
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
     }
@@ -26,63 +147,113 @@ final class MainViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         buildInterface()
+        reloadFeatureSelection()
         enableFinderExtension()
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        let viewSize = view.bounds.size
+        let viewportSize = scrollView.contentSize
+        guard viewSize != lastLaidOutViewSize || viewportSize != lastLaidOutViewportSize else { return }
+        lastLaidOutViewSize = viewSize
+        lastLaidOutViewportSize = viewportSize
+        layoutInterface()
     }
 }
 
 private extension MainViewController {
     func buildInterface() {
-        let titleLabel = NSTextField(labelWithString: "用终端打开")
-        titleLabel.font = .systemFont(ofSize: 28, weight: .bold)
-        titleLabel.textColor = .labelColor
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-
-        let detailLabel = NSTextField(wrappingLabelWithString: "运行 App 后会自动启用 Finder 扩展。右键任意一个本地文件或文件夹，可以选择“用终端打开”；合法的 CocoaPods iOS 工程目录会显示“在终端执行 pod install”，合法的 Flutter 工程目录会显示“在终端执行 flutter pub get”；普通文件夹会显示“安装/升级 CodeGraph 代码地图”。")
-        detailLabel.font = .systemFont(ofSize: 15)
-        detailLabel.textColor = .secondaryLabelColor
-        detailLabel.translatesAutoresizingMaskIntoConstraints = false
-
         statusLabel.font = .systemFont(ofSize: 14, weight: .medium)
         statusLabel.textColor = .secondaryLabelColor
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        selectionStatusLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        selectionStatusLabel.textColor = .secondaryLabelColor
+        scrollView.documentView = scrollDocumentView
+        scrollDocumentView.addSubview(rootStackView)
+        view.addSubview(scrollView)
+        layoutInterface()
+    }
 
-        let openSettingsButton = NSButton(title: "打开扩展设置", target: self, action: #selector(openExtensionSettings))
-        openSettingsButton.bezelStyle = .rounded
-        openSettingsButton.translatesAutoresizingMaskIntoConstraints = false
+    func layoutInterface() {
+        let horizontalMargin: CGFloat = 44
+        let verticalMargin: CGFloat = 32
+        scrollView.frame = view.bounds
+        let viewportSize = scrollView.contentSize
+        let contentWidth = max(viewportSize.width - horizontalMargin * 2, 0)
+        if detailLabel.preferredMaxLayoutWidth != contentWidth {
+            detailLabel.preferredMaxLayoutWidth = contentWidth
+        }
+        if tipLabel.preferredMaxLayoutWidth != contentWidth {
+            tipLabel.preferredMaxLayoutWidth = contentWidth
+        }
+        rootStackView.frame.size.width = contentWidth
+        let contentHeight = rootStackView.fittingSize.height
+        scrollDocumentView.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: viewportSize.width,
+            height: max(contentHeight + verticalMargin * 2, viewportSize.height)
+        )
+        rootStackView.frame = NSRect(
+            x: horizontalMargin,
+            y: verticalMargin,
+            width: contentWidth,
+            height: contentHeight
+        )
+    }
 
-        let enableButton = NSButton(title: "重新启用扩展", target: self, action: #selector(enableExtensionAction))
-        enableButton.bezelStyle = .rounded
-        enableButton.translatesAutoresizingMaskIntoConstraints = false
+    func makeFeatureCheckbox(for feature: FinderMenuFeature) -> NSButton {
+        let checkbox = NSButton(checkboxWithTitle: feature.configurationTitle, target: self, action: #selector(featureSelectionChanged))
+        checkbox.allowsMixedState = false
+        return checkbox
+    }
 
-        let refreshButton = NSButton(title: "刷新状态", target: self, action: #selector(refreshStatusAction))
-        refreshButton.bezelStyle = .rounded
-        refreshButton.translatesAutoresizingMaskIntoConstraints = false
+    @objc func featureSelectionChanged() {
+        updateSelectionStatus(prefix: "待保存")
+    }
 
-        let tipLabel = NSTextField(wrappingLabelWithString: "如果右键菜单未刷新，点击“重新启用扩展”，再重新打开 Finder 窗口；必要时执行 killall Finder。系统设置路径：隐私与安全性 -> 扩展 -> Finder 扩展。")
-        tipLabel.font = .systemFont(ofSize: 13)
-        tipLabel.textColor = .tertiaryLabelColor
-        tipLabel.translatesAutoresizingMaskIntoConstraints = false
+    func reloadFeatureSelection() {
+        let enabledFeatures = FinderMenuFeatureConfiguration.enabledFeatures(fallbackBundle: Bundle.main)
+        featureCheckboxes.forEach { selection in
+            selection.checkbox.state = enabledFeatures.contains(selection.feature) ? .on : .off
+        }
+        updateSelectionStatus(prefix: "当前生效")
+    }
 
-        let buttonStackView = NSStackView(views: [openSettingsButton, enableButton, refreshButton])
-        buttonStackView.orientation = .horizontal
-        buttonStackView.alignment = .leading
-        buttonStackView.spacing = 12
-        buttonStackView.translatesAutoresizingMaskIntoConstraints = false
+    func selectedFeatures() -> Set<FinderMenuFeature> {
+        Set(featureCheckboxes.compactMap { selection in
+            selection.checkbox.state == .on ? selection.feature : nil
+        })
+    }
 
-        let stackView = NSStackView(views: [titleLabel, detailLabel, statusLabel, buttonStackView, tipLabel])
-        stackView.orientation = .vertical
-        stackView.alignment = .leading
-        stackView.spacing = 18
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stackView)
+    func updateSelectionStatus(prefix: String) {
+        let enabledCount = selectedFeatures().count
+        selectionStatusLabel.stringValue = "\(prefix)：\(enabledCount)/\(FinderMenuFeature.allCases.count) 项。"
+    }
 
-        NSLayoutConstraint.activate([
-            stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 44),
-            stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -44),
-            stackView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            detailLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
-            tipLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor)
-        ])
+    func setAllFeaturesEnabled(_ isEnabled: Bool) {
+        featureCheckboxes.forEach { $0.checkbox.state = isEnabled ? .on : .off }
+        updateSelectionStatus(prefix: "待保存")
+    }
+
+    @objc func saveFeatureSelectionAction() {
+        let features = selectedFeatures()
+        do {
+            try FinderMenuFeatureConfiguration.save(features)
+            updateSelectionStatus(prefix: "已保存")
+            writeLog("saved enabled features=\(features.map(\.rawValue).sorted().joined(separator: ","))")
+        } catch {
+            selectionStatusLabel.stringValue = "保存失败：\(error.localizedDescription)"
+            writeLog("save enabled features failed: \(error.localizedDescription)")
+        }
+    }
+
+    @objc func selectAllFeaturesAction() {
+        setAllFeaturesEnabled(true)
+    }
+
+    @objc func deselectAllFeaturesAction() {
+        setAllFeaturesEnabled(false)
     }
 
     @objc func openExtensionSettings() {
@@ -200,4 +371,8 @@ private extension MainViewController {
 private struct PluginKitResult {
     let didSucceed: Bool
     let output: String
+}
+
+private final class FlippedDocumentView: NSView {
+    override var isFlipped: Bool { true }
 }

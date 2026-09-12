@@ -20,7 +20,7 @@ final class FinderSync: FIFinderSync {
     override init() {
         super.init()
         configureObservedDirectories()
-        writeLog("FinderSync init")
+        writeLog("FinderSync init, enabled features=\(enabledFeatures().map(\.rawValue).sorted().joined(separator: ","))")
     }
 
     override func menu(for menuKind: FIMenuKind) -> NSMenu? {
@@ -28,37 +28,55 @@ final class FinderSync: FIFinderSync {
         writeLog("menu kind=\(menuKind.rawValue), candidates=\(urls.map(\.path).joined(separator: " | "))")
         guard menuKind == .contextualMenuForItems, urls.count == 1 else { return nil }
 
+        let enabledFeatures = enabledFeatures()
         let menu = NSMenu(title: "")
-        let openItem = NSMenuItem(title: "用终端打开", action: #selector(openInTerminal(_:)), keyEquivalent: "")
-        openItem.target = self
-        openItem.isEnabled = true
-        menu.addItem(openItem)
+        if enabledFeatures.contains(.open) {
+            let openItem = NSMenuItem(title: "用终端打开", action: #selector(openInTerminal(_:)), keyEquivalent: "")
+            openItem.target = self
+            openItem.isEnabled = true
+            menu.addItem(openItem)
+        }
 
         let directoryURL = urls[0]
-        if dependencyProjectValidator.isCocoaPodsProject(at: directoryURL) {
+        if enabledFeatures.contains(.podInstall),
+           dependencyProjectValidator.isCocoaPodsProject(at: directoryURL) {
             let podInstallItem = NSMenuItem(title: "在终端执行 pod install", action: #selector(runPodInstallInTerminal(_:)), keyEquivalent: "")
             podInstallItem.target = self
             podInstallItem.isEnabled = true
             menu.addItem(podInstallItem)
         }
 
-        if dependencyProjectValidator.isFlutterProject(at: directoryURL) {
+        if enabledFeatures.contains(.flutterPubGet),
+           dependencyProjectValidator.isFlutterProject(at: directoryURL) {
             let flutterPubGetItem = NSMenuItem(title: "在终端执行 flutter pub get", action: #selector(runFlutterPubGetInTerminal(_:)), keyEquivalent: "")
             flutterPubGetItem.target = self
             flutterPubGetItem.isEnabled = true
             menu.addItem(flutterPubGetItem)
         }
 
-        if dependencyProjectValidator.isCodeGraphTargetFolder(at: directoryURL) {
+        if enabledFeatures.contains(.codeGraphBootstrap),
+           dependencyProjectValidator.isCodeGraphTargetFolder(at: directoryURL) {
             let codeGraphItem = NSMenuItem(title: "安装/升级 CodeGraph 代码地图", action: #selector(installOrUpgradeCodeGraph(_:)), keyEquivalent: "")
             codeGraphItem.target = self
             codeGraphItem.isEnabled = true
             menu.addItem(codeGraphItem)
-        };return menu
+        }
+
+        if enabledFeatures.contains(.gitEmptyCommitPush),
+           dependencyProjectValidator.isGitEmptyCommitPushTargetFolder(at: directoryURL) {
+            let gitEmptyCommitPushItem = NSMenuItem(title: "在终端创建空白 Commit 并 Push", action: #selector(pushEmptyCommitInTerminal(_:)), keyEquivalent: "")
+            gitEmptyCommitPushItem.target = self
+            gitEmptyCommitPushItem.isEnabled = true
+            menu.addItem(gitEmptyCommitPushItem)
+        };return menu.items.isEmpty ? nil : menu
     }
 }
 
 private extension FinderSync {
+    func enabledFeatures() -> Set<FinderMenuFeature> {
+        FinderMenuFeatureConfiguration.enabledFeatures(fallbackBundle: Bundle(for: FinderSync.self))
+    }
+
     func configureObservedDirectories() {
         let directoryURLs: Set<URL> = [URL(fileURLWithPath: "/", isDirectory: true)]
         FIFinderSyncController.default().directoryURLs = directoryURLs
@@ -79,6 +97,10 @@ private extension FinderSync {
 
     @objc func installOrUpgradeCodeGraph(_ sender: Any?) {
         performTerminalAction(.codeGraphBootstrap)
+    }
+
+    @objc func pushEmptyCommitInTerminal(_ sender: Any?) {
+        performTerminalAction(.gitEmptyCommitPush)
     }
 
     func performTerminalAction(_ action: TerminalAction) {
@@ -163,6 +185,7 @@ private enum TerminalAction: String {
     case podInstall = "pod-install"
     case flutterPubGet = "flutter-pub-get"
     case codeGraphBootstrap = "codegraph-bootstrap"
+    case gitEmptyCommitPush = "git-empty-commit-push"
 
     var failureTitle: String {
         switch self {
@@ -178,6 +201,9 @@ private enum TerminalAction: String {
         /// 为目标文件夹安装或升级 CodeGraph 请求失败
         case .codeGraphBootstrap:
             return "安装/升级 CodeGraph 失败"
+        /// 在当前文件夹创建空白 Commit 并 Push 请求失败
+        case .gitEmptyCommitPush:
+            return "空白 Commit 并 Push 失败"
         }
     }
 }

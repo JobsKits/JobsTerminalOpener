@@ -43,12 +43,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         writeLog("main view loaded")
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 680, height: 430),
-            styleMask: [.titled, .closable, .miniaturizable],
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "Jobs Terminal Opener"
+        window.contentMinSize = NSSize(width: 720, height: 460)
         window.center()
         window.contentViewController = viewController
         window.makeKeyAndOrderFront(nil)
@@ -106,6 +107,11 @@ private extension AppDelegate {
             writeLog("invalid terminal action=\(actionValue)")
             return
         }
+        guard let feature = FinderMenuFeature(rawValue: actionValue),
+              FinderMenuFeatureConfiguration.enabledFeatures(fallbackBundle: Bundle.main).contains(feature) else {
+            writeLog("disabled terminal action=\(actionValue)")
+            return
+        }
 
         didHandleTerminalOpenRequest = true
         do {
@@ -145,6 +151,9 @@ private extension AppDelegate {
         /// 为目标文件夹安装或升级 CodeGraph 请求失败
         case .codeGraphBootstrap:
             alert.messageText = "安装/升级 CodeGraph 失败"
+        /// 在当前文件夹创建空白 Commit 并 Push 请求失败
+        case .gitEmptyCommitPush:
+            alert.messageText = "空白 Commit 并 Push 失败"
         }
         alert.informativeText = message
         alert.addButton(withTitle: "好")

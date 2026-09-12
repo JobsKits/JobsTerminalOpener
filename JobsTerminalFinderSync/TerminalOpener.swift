@@ -13,6 +13,7 @@ struct TerminalOpener {
         case podInstall = "pod-install"
         case flutterPubGet = "flutter-pub-get"
         case codeGraphBootstrap = "codegraph-bootstrap"
+        case gitEmptyCommitPush = "git-empty-commit-push"
     }
 
     private let dependencyProjectValidator = DependencyProjectValidator()
@@ -41,6 +42,7 @@ private extension TerminalOpener {
         case invalidCocoaPodsProject(URL)
         case invalidFlutterProject(URL)
         case invalidCodeGraphTargetFolder(URL)
+        case invalidGitEmptyCommitPushTargetFolder(URL)
         case terminalCommandFailed(String)
 
         var errorDescription: String? {
@@ -60,6 +62,9 @@ private extension TerminalOpener {
             /// CodeGraph 请求目标不是普通文件夹
             case .invalidCodeGraphTargetFolder(let url):
                 return "CodeGraph 只能安装到普通文件夹：\(url.path)"
+            /// 空白 Commit 与 Push 请求目标不是普通文件夹
+            case .invalidGitEmptyCommitPushTargetFolder(let url):
+                return "空白 Commit 并 Push 只能对普通文件夹执行：\(url.path)"
             /// 请求 Terminal.app 执行命令失败
             case .terminalCommandFailed(let message):
                 return message
@@ -90,6 +95,11 @@ private extension TerminalOpener {
         case .codeGraphBootstrap:
             guard dependencyProjectValidator.isCodeGraphTargetFolder(at: fileURL) else {
                 throw TerminalOpenError.invalidCodeGraphTargetFolder(fileURL)
+            };return fileURL
+        /// 空白 Commit 与 Push 的 Git 管理状态会在 Terminal 内校验
+        case .gitEmptyCommitPush:
+            guard dependencyProjectValidator.isGitEmptyCommitPushTargetFolder(at: fileURL) else {
+                throw TerminalOpenError.invalidGitEmptyCommitPushTargetFolder(fileURL)
             };return fileURL
         }
     }
@@ -131,7 +141,8 @@ private extension TerminalOpener {
             "-e",
             terminalOpenAppleScript(),
             directoryURL.path,
-            action.rawValue
+            action.rawValue,
+            gitEmptyCommitPushCommand()
         ]
 
         let outputPipe = Pipe()
@@ -158,6 +169,7 @@ private extension TerminalOpener {
         on run argv
             set targetPath to item 1 of argv
             set terminalAction to item 2 of argv
+            set emptyCommitPushCommand to item 3 of argv
             set terminalCommand to "cd " & quoted form of targetPath
             if terminalAction is "pod-install" then
                 set terminalCommand to terminalCommand & " && pod install"
@@ -174,6 +186,8 @@ private extension TerminalOpener {
                 set codeGraphCommand to codeGraphCommand & "codegraph_prepare_project() { if [ -d .codegraph ]; then printf '\n▶ 已存在项目代码地图，执行增量同步...\n'; codegraph sync . || return 1; else printf '\n▶ 正在为当前文件夹创建代码地图...\n'; codegraph init --yes . || return 1; fi; printf '\n✔ 当前项目 CodeGraph 状态：\n'; codegraph status .; }; "
                 set codeGraphCommand to codeGraphCommand & "codegraph_ensure_npm && codegraph_ensure_cli && codegraph_prepare_project"
                 set terminalCommand to terminalCommand & " && " & codeGraphCommand
+            else if terminalAction is "git-empty-commit-push" then
+                set terminalCommand to terminalCommand & " && " & emptyCommitPushCommand
             end if
             tell application "Terminal"
                 activate
@@ -181,6 +195,101 @@ private extension TerminalOpener {
             end tell
         end run
         """
+    }
+
+    func gitEmptyCommitPushCommand() -> String {
+        #"""
+        git_empty_commit_push() {
+          local git_bin=""
+          local inside_work_tree=""
+          local repository_root=""
+          local current_branch=""
+          local upstream=""
+          local push_remote=""
+          local remote_count="0"
+          local index_status="0"
+          local commit_hash=""
+
+          printf '\n▶ 正在检查当前文件夹是否由 Git 管理：%s\n' "$PWD"
+          git_bin="$(command -v git 2>/dev/null || true)"
+          if [[ -z "$git_bin" ]] || ! "$git_bin" --version >/dev/null 2>&1; then
+            printf '✖ 未找到可用的 Git，已停止。\n'
+            return 1
+          fi
+          printf '✔ Git 可用：'
+          "$git_bin" --version
+
+          inside_work_tree="$("$git_bin" rev-parse --is-inside-work-tree 2>/dev/null || true)"
+          if [[ "$inside_work_tree" != "true" ]]; then
+            printf '✖ 当前文件夹不在 Git 工作树内，不会创建 Commit：%s\n' "$PWD"
+            return 1
+          fi
+
+          repository_root="$("$git_bin" rev-parse --show-toplevel 2>/dev/null || true)"
+          current_branch="$("$git_bin" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+          if [[ -z "$repository_root" ]]; then
+            printf '✖ 无法读取 Git 仓库根目录，已停止。\n'
+            return 1
+          fi
+          if [[ -z "$current_branch" ]]; then
+            printf '✖ 当前处于 detached HEAD，不会创建或推送空白 Commit。\n'
+            return 1
+          fi
+          printf '✔ Git 仓库：%s\n' "$repository_root"
+          printf '✔ 当前分支：%s\n' "$current_branch"
+
+          "$git_bin" diff --cached --quiet --
+          index_status=$?
+          if (( index_status == 1 )); then
+            printf '✖ 暂存区存在待提交内容。为保证这次是纯空白 Commit，已停止。\n'
+            return 1
+          fi
+          if (( index_status != 0 )); then
+            printf '✖ 无法校验 Git 暂存区，已停止。\n'
+            return "$index_status"
+          fi
+          printf '✔ 暂存区为空，不会带入文件改动。\n'
+
+          upstream="$("$git_bin" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+          if [[ -z "$upstream" ]]; then
+            if "$git_bin" remote get-url origin >/dev/null 2>&1; then
+              push_remote="origin"
+            else
+              remote_count="$("$git_bin" remote 2>/dev/null | /usr/bin/awk 'NF { count += 1 } END { print count + 0 }')"
+              if [[ "$remote_count" == "1" ]]; then
+                push_remote="$("$git_bin" remote 2>/dev/null | /usr/bin/head -n 1)"
+              else
+                printf '✖ 当前分支没有上游，且无法唯一确定推送远程，已停止。\n'
+                "$git_bin" remote -v
+                return 1
+              fi
+            fi
+          fi
+
+          printf '\n▶ 正在创建不包含文件变更的空白 Commit...\n'
+          if ! "$git_bin" commit --allow-empty -m 'chore: empty commit'; then
+            printf '✖ 空白 Commit 创建失败，未执行 Push。\n'
+            return 1
+          fi
+          commit_hash="$("$git_bin" rev-parse --short HEAD 2>/dev/null || true)"
+
+          printf '\n▶ 正在推送空白 Commit...\n'
+          if [[ -n "$upstream" ]]; then
+            if ! "$git_bin" push; then
+              printf '✖ Push 失败；空白 Commit 已保留在本地：%s\n' "$commit_hash"
+              return 1
+            fi
+          else
+            if ! "$git_bin" push -u "$push_remote" "$current_branch"; then
+              printf '✖ Push 失败；空白 Commit 已保留在本地：%s\n' "$commit_hash"
+              return 1
+            fi
+          fi
+
+          printf '\n✔ 空白 Commit 已推送：%s\n' "$commit_hash"
+        }
+        git_empty_commit_push
+        """#
     }
 
     func activateTerminalWhenAvailable() {

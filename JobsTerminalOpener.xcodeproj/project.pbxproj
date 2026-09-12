@@ -17,6 +17,8 @@
 		01B000000000000000000016 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000005 /* main.swift */; };
 		01B000000000000000000017 /* DependencyProjectValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000015 /* DependencyProjectValidator.swift */; };
 		01B000000000000000000018 /* DependencyProjectValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000015 /* DependencyProjectValidator.swift */; };
+		01B000000000000000000019 /* FinderMenuFeatureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000016 /* FinderMenuFeatureConfiguration.swift */; };
+		01B000000000000000000020 /* FinderMenuFeatureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000016 /* FinderMenuFeatureConfiguration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,6 +57,7 @@
 		01A000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		01A000000000000000000014 /* JobsTerminalFinderSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = JobsTerminalFinderSync.entitlements; sourceTree = "<group>"; };
 		01A000000000000000000015 /* DependencyProjectValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyProjectValidator.swift; sourceTree = "<group>"; };
+		01A000000000000000000016 /* FinderMenuFeatureConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderMenuFeatureConfiguration.swift; sourceTree = "<group>"; };
 		01E000000000000000000000 /* JobsTerminalOpener.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JobsTerminalOpener.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		01E000000000000000000001 /* JobsTerminalFinderSync.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = JobsTerminalFinderSync.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -117,6 +120,7 @@
 			isa = PBXGroup;
 			children = (
 				01A000000000000000000015 /* DependencyProjectValidator.swift */,
+				01A000000000000000000016 /* FinderMenuFeatureConfiguration.swift */,
 			);
 			path = JobsTerminalShared;
 			sourceTree = "<group>";
@@ -248,6 +252,7 @@
 					01B000000000000000000002 /* MainViewController.swift in Sources */,
 					01B000000000000000000015 /* TerminalOpener.swift in Sources */,
 					01B000000000000000000017 /* DependencyProjectValidator.swift in Sources */,
+					01B000000000000000000019 /* FinderMenuFeatureConfiguration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -257,6 +262,7 @@
 			files = (
 				01B000000000000000000011 /* FinderSync.swift in Sources */,
 				01B000000000000000000018 /* DependencyProjectValidator.swift in Sources */,
+				01B000000000000000000020 /* FinderMenuFeatureConfiguration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -401,6 +407,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = JobsTerminalOpener/Info.plist;
+				JOBS_TERMINAL_ENABLED_FEATURES = "open,pod-install,flutter-pub-get,codegraph-bootstrap,git-empty-commit-push";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -428,6 +435,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = JobsTerminalOpener/Info.plist;
+				JOBS_TERMINAL_ENABLED_FEATURES = "open,pod-install,flutter-pub-get,codegraph-bootstrap,git-empty-commit-push";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -455,6 +463,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = JobsTerminalFinderSync/Info.plist;
+				JOBS_TERMINAL_ENABLED_FEATURES = "open,pod-install,flutter-pub-get,codegraph-bootstrap,git-empty-commit-push";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../../../../Frameworks",
@@ -484,6 +493,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = JobsTerminalFinderSync/Info.plist;
+				JOBS_TERMINAL_ENABLED_FEATURES = "open,pod-install,flutter-pub-get,codegraph-bootstrap,git-empty-commit-push";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../../../../Frameworks",

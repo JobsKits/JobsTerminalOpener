@@ -38,6 +38,10 @@ struct DependencyProjectValidator {
     func isCodeGraphTargetFolder(at directoryURL: URL) -> Bool {
         isOrdinaryDirectory(directoryURL)
     }
+
+    func isGitEmptyCommitPushTargetFolder(at directoryURL: URL) -> Bool {
+        isOrdinaryDirectory(directoryURL)
+    }
 }
 
 private extension DependencyProjectValidator {
