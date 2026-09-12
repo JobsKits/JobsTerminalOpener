@@ -37,7 +37,7 @@ private extension MainViewController {
         titleLabel.textColor = .labelColor
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let detailLabel = NSTextField(wrappingLabelWithString: "运行 App 后会自动启用 Finder 扩展。右键任意一个本地文件或文件夹，即可在一级右键菜单区域看到“用终端打开”；文件夹会打开自身目录，文件会打开所在目录。")
+        let detailLabel = NSTextField(wrappingLabelWithString: "运行 App 后会自动启用 Finder 扩展。右键任意一个本地文件或文件夹，可以选择“用终端打开”；合法的 CocoaPods iOS 工程目录会显示“在终端执行 pod install”，合法的 Flutter 工程目录会显示“在终端执行 flutter pub get”；普通文件夹会显示“安装/升级 CodeGraph 代码地图”。")
         detailLabel.font = .systemFont(ofSize: 15)
         detailLabel.textColor = .secondaryLabelColor
         detailLabel.translatesAutoresizingMaskIntoConstraints = false

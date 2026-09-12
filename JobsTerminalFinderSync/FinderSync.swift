@@ -9,6 +9,7 @@ import AppKit
 import FinderSync
 
 final class FinderSync: FIFinderSync {
+    private let dependencyProjectValidator = DependencyProjectValidator()
     private let logURL: URL = {
         let baseURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? FileManager.default.temporaryDirectory
         let directoryURL = baseURL.appendingPathComponent("JobsTerminalFinderSync", isDirectory: true)
@@ -32,7 +33,28 @@ final class FinderSync: FIFinderSync {
         openItem.target = self
         openItem.isEnabled = true
         menu.addItem(openItem)
-        return menu
+
+        let directoryURL = urls[0]
+        if dependencyProjectValidator.isCocoaPodsProject(at: directoryURL) {
+            let podInstallItem = NSMenuItem(title: "在终端执行 pod install", action: #selector(runPodInstallInTerminal(_:)), keyEquivalent: "")
+            podInstallItem.target = self
+            podInstallItem.isEnabled = true
+            menu.addItem(podInstallItem)
+        }
+
+        if dependencyProjectValidator.isFlutterProject(at: directoryURL) {
+            let flutterPubGetItem = NSMenuItem(title: "在终端执行 flutter pub get", action: #selector(runFlutterPubGetInTerminal(_:)), keyEquivalent: "")
+            flutterPubGetItem.target = self
+            flutterPubGetItem.isEnabled = true
+            menu.addItem(flutterPubGetItem)
+        }
+
+        if dependencyProjectValidator.isCodeGraphTargetFolder(at: directoryURL) {
+            let codeGraphItem = NSMenuItem(title: "安装/升级 CodeGraph 代码地图", action: #selector(installOrUpgradeCodeGraph(_:)), keyEquivalent: "")
+            codeGraphItem.target = self
+            codeGraphItem.isEnabled = true
+            menu.addItem(codeGraphItem)
+        };return menu
     }
 }
 
@@ -44,9 +66,25 @@ private extension FinderSync {
     }
 
     @objc func openInTerminal(_ sender: Any?) {
+        performTerminalAction(.open)
+    }
+
+    @objc func runPodInstallInTerminal(_ sender: Any?) {
+        performTerminalAction(.podInstall)
+    }
+
+    @objc func runFlutterPubGetInTerminal(_ sender: Any?) {
+        performTerminalAction(.flutterPubGet)
+    }
+
+    @objc func installOrUpgradeCodeGraph(_ sender: Any?) {
+        performTerminalAction(.codeGraphBootstrap)
+    }
+
+    func performTerminalAction(_ action: TerminalAction) {
         let urls = candidateURLs()
         var messages: [String] = []
-        writeLog("action candidates=\(urls.map(\.path).joined(separator: " | "))")
+        writeLog("action=\(action.rawValue), candidates=\(urls.map(\.path).joined(separator: " | "))")
 
         for url in urls {
             let didStartAccessing = url.startAccessingSecurityScopedResource()
@@ -57,7 +95,7 @@ private extension FinderSync {
             }
 
             do {
-                let requestURL = try terminalOpenRequestURL(fileURL: url)
+                let requestURL = try terminalOpenRequestURL(fileURL: url, action: action)
                 writeLog("request terminal open via \(requestURL.absoluteString)")
                 guard NSWorkspace.shared.open(requestURL) else {
                     throw FinderSyncOpenError.requestFailed
@@ -70,15 +108,16 @@ private extension FinderSync {
             }
         }
 
-        showFailureAlert(messages: messages)
+        showFailureAlert(title: action.failureTitle, messages: messages)
     }
 
-    func terminalOpenRequestURL(fileURL: URL) throws -> URL {
+    func terminalOpenRequestURL(fileURL: URL, action: TerminalAction) throws -> URL {
         var components = URLComponents()
         components.scheme = "jobsterminalopener"
         components.host = "open"
         components.queryItems = [
-            URLQueryItem(name: "path", value: fileURL.path)
+            URLQueryItem(name: "path", value: fileURL.path),
+            URLQueryItem(name: "action", value: action.rawValue)
         ]
 
         guard let requestURL = components.url else {
@@ -94,10 +133,10 @@ private extension FinderSync {
               selectedURL.isFileURL else { return [] };return [selectedURL.standardizedFileURL]
     }
 
-    func showFailureAlert(messages: [String]) {
+    func showFailureAlert(title: String, messages: [String]) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "用终端打开失败"
+        alert.messageText = title
         alert.informativeText = messages.isEmpty ? "请选择一个文件或文件夹后再试。" : messages.joined(separator: "\n")
         alert.addButton(withTitle: "好")
         alert.runModal()
@@ -119,14 +158,40 @@ private extension FinderSync {
     }
 }
 
+private enum TerminalAction: String {
+    case open
+    case podInstall = "pod-install"
+    case flutterPubGet = "flutter-pub-get"
+    case codeGraphBootstrap = "codegraph-bootstrap"
+
+    var failureTitle: String {
+        switch self {
+        /// 普通打开终端请求失败
+        case .open:
+            return "用终端打开失败"
+        /// 在目标文件夹执行 pod install 请求失败
+        case .podInstall:
+            return "执行 pod install 失败"
+        /// 在目标文件夹执行 flutter pub get 请求失败
+        case .flutterPubGet:
+            return "执行 flutter pub get 失败"
+        /// 为目标文件夹安装或升级 CodeGraph 请求失败
+        case .codeGraphBootstrap:
+            return "安装/升级 CodeGraph 失败"
+        }
+    }
+}
+
 private enum FinderSyncOpenError: LocalizedError {
     case invalidRequestURL
     case requestFailed
 
     var errorDescription: String? {
         switch self {
+        /// 无法创建合法的宿主 App 请求地址
         case .invalidRequestURL:
-            return "创建用终端打开请求失败"
+            return "创建终端操作请求失败"
+        /// 系统没有接受唤起宿主 App 的请求
         case .requestFailed:
             return "无法唤起 JobsTerminalOpener 宿主 App"
         }

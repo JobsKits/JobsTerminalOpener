@@ -15,6 +15,8 @@
 		01B000000000000000000014 /* JobsTerminalFinderSync.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 01E000000000000000000001 /* JobsTerminalFinderSync.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		01B000000000000000000015 /* TerminalOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000012 /* TerminalOpener.swift */; };
 		01B000000000000000000016 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000005 /* main.swift */; };
+		01B000000000000000000017 /* DependencyProjectValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000015 /* DependencyProjectValidator.swift */; };
+		01B000000000000000000018 /* DependencyProjectValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01A000000000000000000015 /* DependencyProjectValidator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +54,7 @@
 		01A000000000000000000012 /* TerminalOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalOpener.swift; sourceTree = "<group>"; };
 		01A000000000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		01A000000000000000000014 /* JobsTerminalFinderSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = JobsTerminalFinderSync.entitlements; sourceTree = "<group>"; };
+		01A000000000000000000015 /* DependencyProjectValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DependencyProjectValidator.swift; sourceTree = "<group>"; };
 		01E000000000000000000000 /* JobsTerminalOpener.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JobsTerminalOpener.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		01E000000000000000000001 /* JobsTerminalFinderSync.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = JobsTerminalFinderSync.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -81,6 +84,7 @@
 			children = (
 				01G000000000000000000011 /* JobsTerminalOpener */,
 				01G000000000000000000012 /* JobsTerminalFinderSync */,
+				01G000000000000000000015 /* JobsTerminalShared */,
 				01G000000000000000000013 /* Frameworks */,
 				01G000000000000000000014 /* Products */,
 			);
@@ -107,6 +111,14 @@
 				01A000000000000000000014 /* JobsTerminalFinderSync.entitlements */,
 			);
 			path = JobsTerminalFinderSync;
+			sourceTree = "<group>";
+		};
+		01G000000000000000000015 /* JobsTerminalShared */ = {
+			isa = PBXGroup;
+			children = (
+				01A000000000000000000015 /* DependencyProjectValidator.swift */,
+			);
+			path = JobsTerminalShared;
 			sourceTree = "<group>";
 		};
 		01G000000000000000000013 /* Frameworks */ = {
@@ -235,6 +247,7 @@
 					01B000000000000000000001 /* AppDelegate.swift in Sources */,
 					01B000000000000000000002 /* MainViewController.swift in Sources */,
 					01B000000000000000000015 /* TerminalOpener.swift in Sources */,
+					01B000000000000000000017 /* DependencyProjectValidator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -243,6 +256,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				01B000000000000000000011 /* FinderSync.swift in Sources */,
+				01B000000000000000000018 /* DependencyProjectValidator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

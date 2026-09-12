@@ -101,14 +101,20 @@ private extension AppDelegate {
             return
         }
 
+        let actionValue = components.queryItems?.first(where: { $0.name == "action" })?.value ?? TerminalOpener.Action.open.rawValue
+        guard let action = TerminalOpener.Action(rawValue: actionValue) else {
+            writeLog("invalid terminal action=\(actionValue)")
+            return
+        }
+
         didHandleTerminalOpenRequest = true
         do {
             let fileURL = URL(fileURLWithPath: path)
-            let directoryURL = try terminalOpener.openTerminal(from: fileURL)
-            writeLog("open terminal from host \(directoryURL.path)")
+            let directoryURL = try terminalOpener.openTerminal(from: fileURL, action: action)
+            writeLog("terminal action=\(action.rawValue) from host \(directoryURL.path)")
         } catch {
-            writeLog("open terminal from host failed path=\(path), error=\(error.localizedDescription)")
-            showTerminalOpenFailure(error.localizedDescription)
+            writeLog("terminal action=\(action.rawValue) from host failed path=\(path), error=\(error.localizedDescription)")
+            showTerminalOpenFailure(error.localizedDescription, action: action)
         }
     }
 
@@ -123,10 +129,23 @@ private extension AppDelegate {
         };return true
     }
 
-    func showTerminalOpenFailure(_ message: String) {
+    func showTerminalOpenFailure(_ message: String, action: TerminalOpener.Action) {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "用终端打开失败"
+        switch action {
+        /// 普通打开终端请求失败
+        case .open:
+            alert.messageText = "用终端打开失败"
+        /// 在目标文件夹执行 pod install 请求失败
+        case .podInstall:
+            alert.messageText = "执行 pod install 失败"
+        /// 在目标文件夹执行 flutter pub get 请求失败
+        case .flutterPubGet:
+            alert.messageText = "执行 flutter pub get 失败"
+        /// 为目标文件夹安装或升级 CodeGraph 请求失败
+        case .codeGraphBootstrap:
+            alert.messageText = "安装/升级 CodeGraph 失败"
+        }
         alert.informativeText = message
         alert.addButton(withTitle: "好")
         alert.runModal()
