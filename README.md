@@ -58,7 +58,7 @@ git --version
 
 ## 三、运行方式 <a href="#前言" style="font-size:17px; color:green;"><b>🔼</b></a> <a href="#🔚" style="font-size:17px; color:green;"><b>🔽</b></a>
 
-### 3.1、原生 UI 勾选安装
+### 3.1、原生 UI 勾选安装 <a href="#前言" style="font-size:17px; color:green;"><b>🔼</b></a> <a href="#🔚" style="font-size:17px; color:green;"><b>🔽</b></a>
 
 1、双击上级目录的 `../【MacOS】🧩安装Finder扩展.command`。
 
@@ -68,7 +68,7 @@ git --version
 
 4、需要更换功能组合时，可以重新运行安装脚本，也可以直接在已安装 App 内修改。
 
-### 3.2、App 内查看和修改功能
+### 3.2、App 内查看和修改功能 <a href="#前言" style="font-size:17px; color:green;"><b>🔼</b></a> <a href="#🔚" style="font-size:17px; color:green;"><b>🔽</b></a>
 
 1、打开 `JobsTerminalOpener` App，窗口中的“可选功能”区域会把五项功能各列一行。
 
@@ -78,7 +78,7 @@ git --version
 
 4、项目条件校验仍然有效：例如启用 `pod install` 后，当前目录没有 `Podfile` 和 `*.xcodeproj` 时仍不会显示该入口。
 
-### 3.3、Xcode 手动运行
+### 3.3、Xcode 手动运行 <a href="#前言" style="font-size:17px; color:green;"><b>🔼</b></a> <a href="#🔚" style="font-size:17px; color:green;"><b>🔽</b></a>
 
 1、用 [**Xcode**](https://developer.apple.com/xcode) 打开 `JobsTerminalOpener.xcodeproj`。
 
