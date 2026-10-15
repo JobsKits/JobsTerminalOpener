@@ -37,7 +37,7 @@
 | 终端程序 | 系统 `Terminal.app` | 宿主 App 会请求 Terminal 新开窗口并执行 `cd` 到目标目录；首次使用可能需要允许自动化控制 Terminal。 |
 | [**CocoaPods**](https://cocoapods.org/) | 终端环境可执行 `pod` | 只有使用 `pod install` 入口时需要；命令不可用时，Terminal 会直接显示错误。 |
 | [**Flutter**](https://flutter.dev/) | 终端环境可执行 `flutter` | 只有使用 `flutter pub get` 入口时需要；命令不可用时，Terminal 会直接显示错误。 |
-| [**CodeGraph**](https://github.com/colbymchenry/codegraph) | 系统 `/bin/bash` 和 `curl` 可用 | 操作会逐级自检 CodeGraph、npm、Node.js 和 Homebrew；缺失 npm 时通过 Homebrew 安装 Node.js，缺失 Homebrew 时运行官方安装器。 |
+| [**CodeGraph**](https://github.com/colbymchenry/codegraph) | 系统 `/bin/zsh`、`/bin/bash` 和 `curl` 可用 | 操作会逐级自检 CodeGraph、npm、Node.js 和 Homebrew；缺失 npm 时通过 Homebrew 安装 Node.js，缺失 Homebrew 时先选择安装路径：精确输入 `YES` 走官方系统安装器，其它输入走用户目录。 |
 | Git 空白推送 | 终端环境可执行 `git` | 当前文件夹必须在 Git 工作树内，当前分支可推送，且暂存区必须为空。 |
 | 本地文件目标 | Finder 中只选中一个本地 `file://` 项目 | 多选、网络挂载异常、权限受限目录都可能让菜单不展示或打开失败。 |
 
@@ -103,7 +103,7 @@ git --version
 - 空白 Commit 入口同样只对普通文件夹显示。是否由 Git 管理不在 Finder 进程中预判；点击后由 Terminal 运行 `git rev-parse --is-inside-work-tree` 校验当前文件夹，非 Git 目录只输出错误并停止。
 - 宿主 App 计算目标目录后，通过 `/usr/bin/osascript` 请求 `Terminal.app` 新开窗口；普通入口执行 `cd 目标目录`，iOS 依赖入口执行 `cd 目标目录 && pod install`，Flutter 依赖入口执行 `cd 目标目录 && flutter pub get`。
 - 空白 Commit 入口会先确认 Git 命令健康、当前目录在工作树内、当前处于正常分支、暂存区为空，并能确定上游或唯一推送远程。然后执行 `git commit --allow-empty -m 'chore: empty commit'` 和 `git push`；无上游时优先使用 `origin`，否则只在存在唯一远程时为当前分支建立上游。Push 失败时空白 Commit 保留在本地，Terminal 会打印提交哈希。
-- CodeGraph 入口按 `npm/Node.js → Homebrew → bash/curl/Command Line Tools` 向上溯源：每一级都同时检查命令是否存在、版本命令是否能正常运行；npm 或 Node.js 不可用时，通过 Homebrew 安装或修复 `node`；Homebrew 不可用时，下载并运行官方安装器，安装过程中可能要求管理员密码并引导安装 Command Line Tools。系统 `/bin/bash` 或 `curl` 不可用时无法继续自动引导，会在 Terminal 中明确报错并停止。
+- CodeGraph 入口按 `npm/Node.js → Homebrew → bash/curl/Command Line Tools` 向上溯源：每一级都同时检查命令是否存在、版本命令是否能正常运行；npm 或 Node.js 不可用时，通过 Homebrew 安装或修复 `node`；Homebrew 不可用时先强提示选择安装路径：精确输入 `YES` 运行官方系统安装器，届时可能要求管理员密码；其它输入或回车在用户目录安装，且需要已有可用 Git。选择只决定路径，不验证密码，失败不自动切换。系统 `/bin/bash` 或 `curl` 不可用时无法继续自动引导，会在 Terminal 中明确报错并停止。
 - npm 就绪后再检查 CodeGraph：命令可用时只尝试 `codegraph upgrade`，升级失败则保留当前版本继续；命令缺失或损坏时执行 `npm install -g @colbymchenry/codegraph@latest`。最后，当前文件夹已有 `.codegraph/` 就执行 `codegraph sync .`，否则执行 `codegraph init --yes .`，并输出 `codegraph status .`。
 - 不生成临时 `.command` 脚本，因此新窗口不会显示 `$TMPDIR/JobsTerminalOpenerScripts/open-xxx.command ; exit;`。
 - 新窗口由 `Terminal.app` 自己创建，会加载用户终端配置，并停在目标目录。
@@ -151,7 +151,7 @@ git --version
 
 - CodeGraph 操作没有出现在右键菜单：
   - 确认右键目标是普通文件夹，不是文件、`*.xcodeproj` 等 Finder 包文件或多选目标。
-  - 首次安装会自动检查并补齐 npm、Node.js 和 Homebrew；如果需要新装 Homebrew，Terminal 可能要求管理员密码并安装 Command Line Tools。
+  - 首次安装会自动检查并补齐 npm、Node.js 和 Homebrew；如果需要新装 Homebrew，Terminal 会先询问安装路径；精确输入 `YES` 选择系统目录，其它输入或回车选择用户目录，后者需要已有可用 Git。
   - `/bin/bash` 或系统 `curl` 属于自动引导的最上游条件；它们不可用时，Terminal 会打印具体错误并停止，不会继续初始化项目。
   - 如果 `codegraph upgrade` 因网络或安装权限失败，Terminal 会保留完整输出并继续尝试使用当前版本；只有 `codegraph` 命令最终不可用时才会停止。
 
